@@ -1,0 +1,19 @@
+# agent/__init__.py
+"""
+Agent 模块 - 核心架构
+
+负责协调眼睛、大脑、手三个核心模块
+"""
+
+# 导出核心类
+from agent.agent_core import AICameraAgent
+
+# 导出类型定义
+from common.types import PerceptionResult, DetectionResult, AnalysisResult
+
+__all__ = [
+    "AICameraAgent",
+    "PerceptionResult",
+    "DetectionResult", 
+    "AnalysisResult"
+]

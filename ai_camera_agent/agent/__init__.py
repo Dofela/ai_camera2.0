@@ -1,0 +1,37 @@
+# agent/__init__.py
+"""
+Agent 包 - AI Camera Agent 核心模块
+
+这个包包含了 Agent 的核心逻辑和公共类型定义。
+
+主要组件：
+- AICameraAgent: Agent核心类，协调 Eye、Brain、Hand 三个模块
+- 公共类型定义: 供所有模块使用的数据类型
+"""
+
+from agent.agent_core import AICameraAgent, main, test_agent
+from common.types import (
+    BoundingBox,
+    Detection,
+    DetectionResult,
+    AnalysisResult,
+    PerceptionResult,
+    TrackedObject
+)
+
+__all__ = [
+    # 核心类
+    "AICameraAgent",
+    "main",
+    "test_agent",
+    
+    # 类型定义
+    "BoundingBox",
+    "Detection",
+    "DetectionResult",
+    "AnalysisResult",
+    "PerceptionResult",
+    "TrackedObject",
+]
+
+__version__ = "1.0.0"
