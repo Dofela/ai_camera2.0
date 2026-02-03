@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Camera Agent - 控制台</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --accent-color: #4CAF50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* 顶部栏 */
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+
+        /* 登录框 */
+        #login-panel {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input {
+            background: #404040;
+            border: 1px solid #555;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #45a049; }
+        button:disabled { background: #555; cursor: not-allowed; }
+
+        /* 面板通用样式 */
+        .panel {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .panel-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 左侧：系统状态 */
+        #status-panel {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .status-item {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 中间：视频与对话 */
+        #center-area {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        #video-container {
+            flex: 2;
+            background: black;
+            border-radius: 8px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            min-height: 300px;
+        }
+
+        #video-feed {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-history {
+            flex: 1;
+            background: #222;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .msg { margin-bottom: 8px; line-height: 1.4; }
+        .msg.user { color: #64b5f6; }
+        .msg.agent { color: #81c784; }
+        .msg.system { color: #aaa; font-style: italic; }
+
+        #chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input { flex: 1; }
+
+        /* 右侧：报警日志 */
+        #alert-panel {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        #alert-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: #402020;
+            border-left: 3px solid var(--danger-color);
+            padding: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            border-radius: 2px;
+            animation: fadeIn 0.3s;
+        }
+
+        .alert-item.info {
+            background: #203040;
+            border-left-color: #2196f3;
+        }
+
+        .alert-time {
+            color: #aaa;
+            font-size: 0.75rem;
+            margin-bottom: 2px;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+        .badge-success { background: #388e3c; }
+        .badge-error { background: #d32f2f; }
+
+        #connection-status {
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="display:flex; align-items:center">
+            <h1>👁️ AI Camera Agent</h1>
+            <span id="connection-status" class="badge badge-error">未连接</span>
+        </div>
+
+        <div id="login-panel">
+            <input type="text" id="username" placeholder="用户名" value="admin">
+            <input type="password" id="password" placeholder="密码" value="password">
+            <button onclick="login()" id="btn-login">登录</button>
+            <button onclick="logout()" id="btn-logout" style="display:none; background:#555">登出</button>
+        </div>
+    </header>
+
+    <div id="status-panel" class="panel">
+        <div class="panel-header">
+            <span>📊 系统状态</span>
+            <button onclick="refreshStatus()" style="font-size:0.8rem; padding:2px 8px;">刷新</button>
+        </div>
+        <div id="status-content">
+            <div class="status-item"><span>服务状态:</span> <span id="st-service">未知</span></div>
+            <div class="status-item"><span>API 连接:</span> <span id="st-api">❌</span></div>
+            <div class="status-item"><span>Token:</span> <span id="st-token">无</span></div>
+            <hr style="border-color:#444; width:100%">
+            <div class="status-item"><span>录制状态:</span> <span id="st-recording">-</span></div>
+            <div class="status-item"><span>分辨率:</span> <span id="st-resolution">-</span></div>
+            <div class="status-item"><span>FPS:</span> <span id="st-fps">-</span></div>
+        </div>
+    </div>
+
+    <div id="center-area">
+        <div id="video-container" class="panel" style="padding:0">
+            <img id="video-feed" alt="等待视频信号..." style="display:none">
+            <div id="video-placeholder" style="color:#aaa">📺 等待连接视频流...</div>
+        </div>
+
+        <div id="chat-container" class="panel">
+            <div class="panel-header">💬 与 Agent 对话</div>
+            <div id="chat-history">
+                <div class="msg system">请先登录以开始对话...</div>
+            </div>
+            <div id="chat-input-area">
+                <input type="text" id="chat-input" placeholder="输入指令，例如：'系统状态怎么样'，'只检测人'..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button onclick="sendMessage()" id="btn-send" disabled>发送</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-panel" class="panel">
+        <div class="panel-header">
+            <span>🔔 实时警报</span>
+            <button onclick="clearAlerts()" style="font-size:0.8rem; padding:2px 8px; background:#555">清空</button>
+        </div>
+        <div id="alert-list">
+            </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000";
+        const WS_BASE = "ws://localhost:8000";
+        let accessToken = localStorage.getItem("access_token");
+        let videoWs = null;
+        let alertWs = null;
+
+        // 初始化
+        window.onload = function() {
+            if(accessToken) {
+                onLoginSuccess();
+            } else {
+                logChat("system", "欢迎！请使用右上角默认账号(admin/password)登录。");
+            }
+        };
+
+        // --- 认证模块 ---
+
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const btn = document.getElementById("btn-login");
+
+            try {
+                btn.disabled = true;
+                btn.innerText = "登录中...";
+
+                const url = `${API_BASE}/api/v1/auth/login?username=${username}&password=${password}`;
+                const response = await fetch(url, { method: "POST" });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    accessToken = data.access_token;
+                    localStorage.setItem("access_token", accessToken);
+                    onLoginSuccess();
+                } else {
+                    alert("登录失败: " + response.statusText);
+                }
+            } catch (e) {
+                alert("连接错误: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "登录";
+            }
+        }
+
+        function logout() {
+            accessToken = null;
+            localStorage.removeItem("access_token");
+            location.reload();
+        }
+
+        function onLoginSuccess() {
+            document.getElementById("login-panel").innerHTML = `
+                <span style="color:#81c784; margin-right:10px">✅ 已登录</span>
+                <button onclick="logout()" style="background:#d32f2f">登出</button>
+            `;
+            document.getElementById("st-token").innerText = "有效";
+            document.getElementById("st-token").style.color = "#81c784";
+            document.getElementById("btn-send").disabled = false;
+            document.getElementById("connection-status").className = "badge badge-success";
+            document.getElementById("connection-status").innerText = "在线";
+
+            logChat("system", "登录成功！正在连接服务...");
+
+            // 启动各项连接
+            connectVideoWs();
+            connectAlertWs();
+            refreshStatus();
+        }
+
+        // --- 视频流模块 ---
+
+        function connectVideoWs() {
+            if (videoWs) videoWs.close();
+
+            const img = document.getElementById("video-feed");
+            const placeholder = document.getElementById("video-placeholder");
+
+            videoWs = new WebSocket(`${WS_BASE}/ws/video`);
+            videoWs.binaryType = "blob";
+
+            videoWs.onopen = () => {
+                console.log("Video WS Connected");
+                placeholder.style.display = "none";
+                img.style.display = "block";
+            };
+
+            videoWs.onmessage = (event) => {
+                const url = URL.createObjectURL(event.data);
+                img.onload = () => URL.revokeObjectURL(url);
+                img.src = url;
+            };
+
+            videoWs.onclose = () => {
+                console.log("Video WS Closed");
+                placeholder.style.display = "block";
+                placeholder.innerText = "🔌 视频连接断开";
+                img.style.display = "none";
+                setTimeout(connectVideoWs, 3000); // 自动重连
+            };
+        }
+
+        // --- 报警模块 ---
+
+        function connectAlertWs() {
+            if (alertWs) alertWs.close();
+
+            alertWs = new WebSocket(`${WS_BASE}/ws/alerts`);
+
+            alertWs.onopen = () => console.log("Alert WS Connected");
+
+            alertWs.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addAlert(data);
+                } catch(e) {
+                    console.error("Alert parse error", e);
+                }
+            };
+
+            alertWs.onclose = () => setTimeout(connectAlertWs, 3000);
+        }
+
+        function addAlert(data) {
+            const list = document.getElementById("alert-list");
+            const div = document.createElement("div");
+
+            // 根据类型样式
+            let typeClass = "";
+            if (data.type === "alert" || data.is_abnormal) typeClass = ""; // 默认红色
+            else typeClass = "info";
+
+            div.className = `alert-item ${typeClass}`;
+
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `
+                <div class="alert-time">${time}</div>
+                <div style="font-weight:bold">${data.alert || "通知"}</div>
+                <div>${data.description || ""}</div>
+            `;
+
+            list.prepend(div);
+        }
+
+        function clearAlerts() {
+            document.getElementById("alert-list").innerHTML = "";
+        }
+
+        // --- 对话模块 ---
+
+        async function sendMessage() {
+            const input = document.getElementById("chat-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            // 显示用户消息
+            logChat("user", text);
+            input.value = "";
+            input.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/chat`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({
+                        question: text,
+                        session_id: "web-client"
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    logChat("agent", data.answer);
+                } else {
+                    if(response.status === 401) {
+                        logChat("system", "❌ 认证过期，请重新登录");
+                        logout();
+                    } else {
+                        logChat("system", `❌ 请求失败: ${response.status}`);
+                    }
+                }
+            } catch (e) {
+                logChat("system", `❌ 网络错误: ${e.message}`);
+            } finally {
+                input.disabled = false;
+                input.focus();
+            }
+        }
+
+        function logChat(role, text) {
+            const history = document.getElementById("chat-history");
+            const div = document.createElement("div");
+            div.className = `msg ${role}`;
+
+            let prefix = "";
+            if(role === "user") prefix = "👤 你: ";
+            if(role === "agent") prefix = "🤖 Agent: ";
+            if(role === "system") prefix = "🔧 系统: ";
+
+            div.innerText = prefix + text;
+            history.appendChild(div);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        // --- 状态模块 ---
+
+        async function refreshStatus() {
+            if (!accessToken) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/video/status`, {
+                    headers: { "Authorization": `Bearer ${accessToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById("st-service").innerText = "运行中";
+                    document.getElementById("st-service").style.color = "#81c784";
+                    document.getElementById("st-api").innerText = "✅";
+                    document.getElementById("st-recording").innerText = data.is_recording ? "⏺ 录制中" : "休眠";
+                    document.getElementById("st-resolution").innerText = data.resolution;
+                    document.getElementById("st-fps").innerText = data.fps;
+                }
+            } catch (e) {
+                console.warn("Status fetch failed", e);
+            }
+        }
+
+        // 定时刷新状态
+        setInterval(refreshStatus, 10000);
+
+    </script>
+</body>
+</html>

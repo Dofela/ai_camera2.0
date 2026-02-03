@@ -68,13 +68,13 @@ class HandCore:
         from skills.notification.email_notify import EmailNotificationSkill
         from skills.system.health_check import HealthCheckSkill
         from skills.system.vision_control import VisionControlSkill
-        
+        from skills.vision.deep_perception import DeepPerceptionSkill
         # 注册基础技能（不依赖硬件）
         self._register_skill(LogSearchSkill())
         self._register_skill(ReportSkill())
         self._register_skill(EmailNotificationSkill())
         self._register_skill(HealthCheckSkill())
-        
+
         # 注册视觉技能（现在Eye已就绪）
         if self.eye:
             self._register_skill(VisualPerceptionSkill(self.eye))
@@ -82,7 +82,7 @@ class HandCore:
             self._register_skill(SecurityModeSkill(self.eye))
             self._register_skill(DismissAlertsSkill(self.eye))
             self._register_skill(VisionControlSkill(self.eye))
-        
+            self._register_skill(DeepPerceptionSkill(self.eye))
         logging.info(f"🖐️ [Hand] 注册了 {len(self.skills)} 个技能")
 
     def _init_skills(self):

@@ -233,7 +233,7 @@ class AICameraAgent:
         tasks.append(async_db_manager.close_all())
         
         # 关闭HTTP客户端
-        if self.brain and hasattr(self.brain, 'client'):
+        if self.brain and getattr(self.brain, 'client', None):
             tasks.append(self.brain.client.aclose())
         
         # 关闭VLM客户端

@@ -276,6 +276,50 @@ class SceneAnalyzer:
             logging.error(f"❌ [SceneAnalyzer] 响应解析错误: {e}")
             return None
 
+    async def analyze_detail(self, frame: np.ndarray, bbox: list, label: str) -> dict:
+        """
+        執行第三層：精確分析（基於 YOLO 裁剪）
+        對特定目標進行裁剪並詢問 LLM
+        """
+        try:
+            # 1. 裁剪圖像 (YOLO bbox 格式通常為 [x1, y1, x2, y2])
+            h, w = frame.shape[:2]
+            x1, y1, x2, y2 = bbox
+
+            # 邊界保護
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(w, x2), min(h, y2)
+
+            if x2 <= x1 or y2 <= y1:
+                return {"error": "無效的裁剪區域"}
+
+            crop_img = frame[y1:y2, x1:x2]
+
+            # 2. 構建精確分析 Prompt (參考 three_tier_perception.py)
+            prompt = f"""
+            這是一個{label}的特寫圖像，請分析：
+            1. 行為描述（正在做什麼）
+            2. 動作標籤（walking, standing, carrying等）
+            3. 外觀特徵（衣著、年齡段、攜帶物品）
+            4. 風險等級（0-5）
+            5. 如果有風險，說明原因
+
+            請用 JSON 格式返回，包含字段: behavior_description, action_tags, appearance_features, risk_level, alert_reason
+            """
+
+            # 3. 調用 VLM
+            json_response = await self.vlm_client.analyze_frames(
+                frames=[crop_img],
+                prompt=prompt
+            )
+
+            return self._parse_response(json_response)
+
+        except Exception as e:
+            logging.error(f"❌ [SceneAnalyzer] 精確分析失敗: {e}")
+            return {"error": str(e)}
+
+
     async def close(self):
         """关闭分析器"""
         await self.vlm_client.close()

@@ -1,0 +1,95 @@
+# ==========================
+# 1. Python & 环境
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 虚拟环境
+venv/
+.venv/
+env/
+.env_dir/
+
+# ==========================
+# 2. 敏感配置 & 密钥
+# ==========================
+# 极其重要：防止 API Key 和数据库密码泄露
+.env
+.env.local
+config/secrets.py
+
+# ==========================
+# 3. 数据库 & 临时文件
+# ==========================
+# 忽略旧的 SQLite 文件 (我们已经迁移到 Postgres)
+*.db
+*.sqlite3
+*.sqlite
+monitor_logs.db
+eye_module.db
+
+# Postgres 本地数据 (如果 docker-compose 把数据挂载在当前目录)
+pg_data/
+postgres_data/
+
+# ==========================
+# 4. 媒体资产 & 运行数据
+# ==========================
+# 视频存档 (体积巨大，不应提交)
+video_archive/
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# 截图 & 临时图片
+snapshots/
+*.jpg
+*.png
+*.jpeg
+
+# ==========================
+# 5. AI 模型文件
+# ==========================
+# YOLO 或 ReID 模型权重通常很大
+*.pt
+*.pth
+*.onnx
+models/
+!models/.gitkeep  # 如果你想保留目录结构
+
+# ==========================
+# 6. IDE & 系统文件
+# ==========================
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ==========================
+# 7. 日志
+# ==========================
+*.log
+logs/

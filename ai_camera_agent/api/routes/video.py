@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
-from agent.agent_core import AgentCore
+from agent.agent_core import AICameraAgent
 from api.dependencies import get_agent
 from api.middleware.auth import verify_token
 
@@ -30,7 +30,7 @@ class EventListResponse(BaseModel):
     limit: int
 
 @router.get("/video/status", response_model=VideoStatusResponse, dependencies=[Depends(verify_token)])
-async def get_video_status(agent: AgentCore = Depends(get_agent)):
+async def get_video_status(agent: AICameraAgent = Depends(get_agent)):
     """
     获取视频状态
     
@@ -57,7 +57,7 @@ async def get_video_status(agent: AgentCore = Depends(get_agent)):
 async def list_events(
     page: int = 1,
     limit: int = 20,
-    agent: AgentCore = Depends(get_agent)
+    agent: AICameraAgent = Depends(get_agent)
 ):
     """
     列出安全事件
@@ -88,7 +88,7 @@ async def list_events(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/video/snapshot", dependencies=[Depends(verify_token)])
-async def get_snapshot(agent: AgentCore = Depends(get_agent)):
+async def get_snapshot(agent: AICameraAgent = Depends(get_agent)):
     """
     获取当前快照
     

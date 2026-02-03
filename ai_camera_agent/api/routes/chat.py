@@ -8,7 +8,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from agent.agent_core import AgentCore
+from agent.agent_core import AICameraAgent
 from api.dependencies import get_agent
 from api.middleware.auth import verify_token
 
@@ -31,14 +31,14 @@ class ChatResponse(BaseModel):
 @router.post("/chat", response_model=ChatResponse, dependencies=[Depends(verify_token)])
 async def chat(
     query: ChatQuery,
-    agent: AgentCore = Depends(get_agent)
+    agent: AICameraAgent = Depends(get_agent)
 ) -> ChatResponse:
     """
-    对话接口 - 使用 AgentCore 处理用户问题
+    对话接口 - 使用 AICameraAgent 处理用户问题
     
     Args:
         query: 聊天请求
-        agent: AgentCore 实例
+        agent: AICameraAgent 实例
         
     Returns:
         聊天响应
@@ -69,7 +69,7 @@ async def chat(
 @router.post("/chat/stream")
 async def chat_stream(
     query: ChatQuery,
-    agent: AgentCore = Depends(get_agent)
+    agent: AICameraAgent = Depends(get_agent)
 ):
     """
     流式对话接口（SSE）
@@ -85,7 +85,7 @@ async def chat_stream(
             # 开始处理
             yield f"data: {{\"event\": \"start\", \"message\": \"开始处理问题...\"}}\n\n"
             
-            # 模拟流式响应（实际应集成到 AgentCore 的流式处理）
+            # 模拟流式响应（实际应集成到 AICameraAgent 的流式处理）
             # 这里先返回完整响应，后续可优化为真正的流式
             answer = await agent.process(query.question)
             
@@ -113,7 +113,7 @@ async def chat_stream(
 
 
 @router.get("/chat/skills")
-async def list_skills(agent: AgentCore = Depends(get_agent)):
+async def list_skills(agent: AICameraAgent = Depends(get_agent)):
     """
     列出所有可用技能
     
@@ -138,7 +138,7 @@ async def list_skills(agent: AgentCore = Depends(get_agent)):
 
 
 @router.post("/chat/autonomous")
-async def trigger_autonomous_check(agent: AgentCore = Depends(get_agent)):
+async def trigger_autonomous_check(agent: AICameraAgent = Depends(get_agent)):
     """
     触发自主巡检
     

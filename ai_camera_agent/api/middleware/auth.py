@@ -5,6 +5,7 @@
 
 from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from starlette.middleware.base import BaseHTTPMiddleware  # <--- 新增导入
 import jwt
 import logging
 from typing import Optional
@@ -16,21 +17,13 @@ ALGORITHM = "HS256"
 
 security = HTTPBearer()
 
+
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
     验证JWT令牌
-    
-    Args:
-        credentials: HTTP认证凭证
-        
-    Returns:
-        解码后的令牌载荷
-        
-    Raises:
-        HTTPException: 令牌无效或过期
     """
     token = credentials.credentials
-    
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
@@ -45,15 +38,10 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
             detail="无效的认证令牌"
         )
 
+
 def create_access_token(data: dict) -> str:
     """
     创建访问令牌
-    
-    Args:
-        data: 令牌载荷数据
-        
-    Returns:
-        JWT令牌字符串
     """
     to_encode = data.copy()
     import datetime
@@ -62,56 +50,48 @@ def create_access_token(data: dict) -> str:
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 async def get_current_user(request: Request) -> Optional[dict]:
     """
     获取当前用户信息
-    
-    Args:
-        request: HTTP请求对象
-        
-    Returns:
-        用户信息字典或None
     """
     # 检查是否有认证头
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         return None
-    
+
     try:
         # 解析Bearer令牌
         scheme, token = auth_header.split()
         if scheme.lower() != "bearer":
             return None
-            
+
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except:
         return None
 
-class AuthMiddleware:
+
+class AuthMiddleware(BaseHTTPMiddleware):  # <--- 修改：继承 BaseHTTPMiddleware
     """
     认证中间件类
     """
-    
-    def __init__(self, excluded_paths: list = None):
+
+    def __init__(self, app, excluded_paths: list = None):  # <--- 修改：添加 app 参数
+        super().__init__(app)  # <--- 修改：初始化父类
         self.excluded_paths = excluded_paths or []
         logging.info("🔒 认证中间件初始化完成")
-    
-    async def __call__(self, request: Request, call_next):
+
+    async def dispatch(self, request: Request, call_next):  # <--- 修改：重命名为 dispatch
         """
         中间件处理函数
-        
-        Args:
-            request: HTTP请求对象
-            call_next: 下一个处理函数
-            
-        Returns:
-            HTTP响应
         """
         # 检查是否需要跳过认证
-        if request.url.path in self.excluded_paths:
-            return await call_next(request)
-        
+        # 简单的路径前缀匹配
+        for path in self.excluded_paths:
+            if request.url.path == path or request.url.path.startswith(path):
+                return await call_next(request)
+
         # 检查认证
         user = await get_current_user(request)
         if not user:
@@ -119,6 +99,6 @@ class AuthMiddleware:
             request.state.user = None
         else:
             request.state.user = user
-        
+
         response = await call_next(request)
         return response

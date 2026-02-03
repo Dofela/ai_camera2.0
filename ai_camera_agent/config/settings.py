@@ -17,7 +17,7 @@ load_dotenv()
 # ============================================================
 PROJECT_ROOT = Path(__file__).parent.parent
 ARCHIVE_DIR = os.getenv("ARCHIVE_DIR", "video_archive")
-VIDEO_SOURCE = os.getenv("VIDEO_SOURCE", "0")  # 0=摄像头, 或RTSP地址
+VIDEO_SOURCE = os.getenv("VIDEO_SOURCE")  # 0=摄像头, 或RTSP地址
 
 
 # ============================================================
@@ -76,8 +76,12 @@ class YoloConfig:
     CONFIDENCE_THRESHOLD: float = float(os.getenv("YOLO_CONFIDENCE", "0.35"))
     NMS_THRESHOLD: float = float(os.getenv("YOLO_NMS_THRESHOLD", "0.45"))
 
-    # 默认检测目标
-    DEFAULT_TARGETS: list = ["person"]
+    # [Stage 1] 默认粗筛目标 (寻找感兴趣区域 ROI)
+    DEFAULT_TARGETS: list = ["person", "car", "bicycle", "motorcycle"]
+
+    # [Stage 2] 精修目标 (在 ROI 中寻找细节，用于提取特征向量)
+    # 这些目标只在 Stage 2 的裁剪图中进行检测
+    REFINE_TARGETS: list = ["face", "license plate", "mobile phone", "cigarette", "knife"]
 
 
 # ============================================================
@@ -119,20 +123,43 @@ class ChatLLMConfig(VLMConfig):
 
 
 # ============================================================
-# 数据库配置
+# 数据库配置 (PostgreSQL Upgrade)
 # ============================================================
 class DBConfig:
-    """数据库配置"""
-    DB_PATH: str = os.getenv("DB_PATH", "monitor_logs.db")
-    OBSERVATION_DB_PATH: str = os.getenv("OBSERVATION_DB_PATH", "observation_logs.db")
-    EYE_DB_PATH: str = os.getenv("EYE_DB_PATH", "eye_module.db")
+    """数据库配置 - PostgreSQL"""
+
+    # 基础连接参数
+    HOST: str = os.getenv("POSTGRES_HOST", "localhost")
+    PORT: int = int(os.getenv("POSTGRES_PORT", "5432"))
+    USER: str = os.getenv("POSTGRES_USER", "postgres")
+    PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
+    DB_NAME: str = os.getenv("POSTGRES_DB", "ai_camera_db")
+
+    # 构建 DSN (Data Source Name)
+    # 同步用 (psycopg2): postgresql://user:pass@host:port/dbname
+    DATABASE_URL: str = f"postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DB_NAME}"
+
+    # 异步用 (asyncpg): postgresql://user:pass@host:port/dbname
+    # asyncpg 直接使用相同的 URL 格式即可，或者拆分参数传给 connect
 
     # 连接池配置
-    POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "5"))
-    EYE_POOL_SIZE: int = int(os.getenv("EYE_POOL_SIZE", "3"))
+    # Web端连接池 (psycopg2)
+    POOL_MIN_SIZE: int = int(os.getenv("DB_POOL_MIN", "1"))
+    POOL_MAX_SIZE: int = int(os.getenv("DB_POOL_MAX", "5"))
 
-    # WAL模式
-    USE_WAL: bool = os.getenv("DB_USE_WAL", "true").lower() == "true"
+    # Eye端连接池 (asyncpg) - 这里的配置要大，因为是高频写入
+    EYE_POOL_MIN_SIZE: int = int(os.getenv("EYE_POOL_MIN", "2"))
+    EYE_POOL_MAX_SIZE: int = int(os.getenv("EYE_POOL_MAX", "10"))
+
+
+class VectorConfig:
+    """向量数据库配置"""
+    # 向量维度 (根据你使用的 ReID/Face 模型决定，例如 FaceNet 是 512 或 128)
+    DIMENSION: int = int(os.getenv("VECTOR_DIMENSION", "512"))
+
+    # 索引类型: 'hnsw' (快但费内存/CPU) 或 'ivfflat' (慢但省资源)
+    # 建议: known_identities 用 hnsw，security_events 用 ivfflat 或不建索引
+    INDEX_TYPE: str = os.getenv("VECTOR_INDEX_TYPE", "hnsw")
 
 
 # ============================================================
@@ -158,6 +185,9 @@ class EyeConfig:
     # 状态过滤器配置
     IOU_THRESHOLD: float = float(os.getenv("EYE_IOU_THRESHOLD", "0.85"))
     RECHECK_INTERVAL: float = float(os.getenv("EYE_RECHECK_INTERVAL", "15.0"))
+
+    # [新增] 移动检测阈值 (像素) - 用于触发 Stage 2
+    MOVEMENT_THRESHOLD: float = float(os.getenv("EYE_MOVEMENT_THRESHOLD", "20.0"))
 
     # 高危目标 (始终触发报警)
     BASE_ALERT_CLASSES: set = {"fire", "smoke", "blood", "knife", "fall"}
